@@ -8,7 +8,40 @@
 {-# LANGUAGE TypeSynonymInstances   #-}
 -- |
 
-module Main (main) where
+module Main
+( -- * Entry points
+  main
+, runGame
+  -- * Data structures
+, Card (..)
+, PlayerCard, PlayerDeck, GameCard, GameDeck, Deck
+, Game (..), Player (..), GameS
+, PlayerName
+
+  -- * Initializers
+, emptyDeck
+, initialDeck
+, newGame
+, newPlayer
+, mkCard, quit
+
+, mkGameCard
+
+  -- * Getter and Setter
+, currentPlayer
+, playerNumCards
+, gamePoints
+
+  -- * Stateful
+, takeAnyCard
+, nextPlayerTurn
+, runRng
+
+  -- * Helpers
+, pass
+, passM
+, rndNumberRange
+) where
 
 import           Control.Lens
 import           Control.Monad.State
@@ -60,7 +93,9 @@ type PlayerCard = Card Void -- ^ void discards the player name
 type PlayerDeck = [PlayerCard]
 -- | game card (main deck) needs reference to the player name
 type GameCard = Card Identity -- ^ identity = only player name
+
 -- type GameCard = Card Maybe -- ^ the card may have an owner
+
 type GameDeck = [GameCard]
 type Deck f = [Card f]
 
@@ -98,25 +133,27 @@ newGame playerNames gen = Game { _mainDeck = emptyDeck
                                , _rndGen = gen -- mkStdGen 2
                                }
 
--- | hide data constructor
+-- | create a new player
 newPlayer :: PlayerDeck -> PlayerName -> Player
 newPlayer = Player
 
+-- | create a new player card with given value
 mkCard :: Int -> PlayerCard
 mkCard val = Card val Void
 
+-- | create a new finalizer for the playercard
 quit :: PlayerCard
 quit = CardQuit Void
 
--- convert a player card to a game card
+-- | convert a player card to a game card
 mkGameCard :: Player -> PlayerCard -> GameCard
 mkGameCard player (CardQuit _) = CardQuit $ Identity (player^.playerName)
 mkGameCard player (Card val _) = Card val $ Identity (player^.playerName)
 
--- game monad
+-- | game monad
 type GameS m a = (Monad m) => StateT Game m a
 
--- getter / setter for the active player (first player in turn order)
+-- | getter / setter for the active player (first player in turn order)
 currentPlayer :: Lens' Game Player
 currentPlayer = lens
   (\game -> fromJust $ game^?playerTurn._head)
@@ -173,6 +210,7 @@ runGame = do
     -- player has no cards left
     Nothing -> return ()
 
+-- | Entry point
 main :: IO ()
 main = do
   gen <- newStdGen
